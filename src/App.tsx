@@ -178,13 +178,16 @@ function DashboardPage({
           <h2>月別の支出推移</h2>
           <p>すべての CSV を統合した月次合計</p>
         </div>
-        <Bar
-          data={monthlyChartData}
-          options={{
-            responsive: true,
-            plugins: { legend: { display: false } },
-          }}
-        />
+        <div className="chart-wrap">
+          <Bar
+            data={monthlyChartData}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+            }}
+          />
+        </div>
       </section>
 
       <section className="panel chart-panel">
@@ -192,11 +195,12 @@ function DashboardPage({
           <h2>カテゴリ別の構成比</h2>
           <p>主要カテゴリにどれだけ支出しているか</p>
         </div>
-        <div className="doughnut-wrap">
+        <div className="chart-wrap doughnut-wrap">
           <Doughnut
             data={categoryChartData}
             options={{
               responsive: true,
+              maintainAspectRatio: false,
               plugins: { legend: { position: 'bottom' } },
             }}
           />
@@ -262,20 +266,20 @@ function ListPage({ records }: { records: PaymentRecord[] }) {
           <tbody>
             {records.map((record) => (
               <tr key={record.id}>
-                <td>{record.date}</td>
-                <td>{record.payer}</td>
-                <td>{formatMonth(record.month)}</td>
-                <td>{record.category}</td>
-                <td>{record.detail}</td>
-                <td>{record.costType === 'fixed' ? '固定費' : '変動費'}</td>
-                <td>{currencyFormatter.format(record.amount)}</td>
-                <td>
+                <td data-label="日付">{record.date}</td>
+                <td data-label="支払い者">{record.payer}</td>
+                <td data-label="月">{formatMonth(record.month)}</td>
+                <td data-label="カテゴリ">{record.category}</td>
+                <td data-label="内容">{record.detail}</td>
+                <td data-label="種別">{record.costType === 'fixed' ? '固定費' : '変動費'}</td>
+                <td data-label="金額">{currencyFormatter.format(record.amount)}</td>
+                <td data-label="タグ">
                   <div className="tag-list">
                     {record.subscription ? <span className="tag">サブスク</span> : null}
                     {record.hobby ? <span className="tag">趣味</span> : null}
                   </div>
                 </td>
-                <td>{record.sourceFile}</td>
+                <td data-label="CSV">{record.sourceFile}</td>
               </tr>
             ))}
           </tbody>
@@ -322,10 +326,10 @@ function SummarySection({
           <tbody>
             {rows.map((row) => (
               <tr key={row.label}>
-                <td>{row.label}</td>
-                <td>{currencyFormatter.format(row.total)}</td>
-                <td>{row.count.toLocaleString('ja-JP')} 件</td>
-                <td>{currencyFormatter.format(row.average)}</td>
+                <td data-label="項目">{row.label}</td>
+                <td data-label="合計">{currencyFormatter.format(row.total)}</td>
+                <td data-label="件数">{row.count.toLocaleString('ja-JP')} 件</td>
+                <td data-label="平均">{currencyFormatter.format(row.average)}</td>
               </tr>
             ))}
           </tbody>
