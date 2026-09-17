@@ -79,11 +79,11 @@ function App() {
     <div className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">家計の見える化</p>
+          <p className="eyebrow">家計ダッシュボード</p>
           <h1>home_memo</h1>
           <p className="hero-copy">
-            プロジェクトにコミットされた CSV を支払い者・月をまたいで統合し、固定費・変動費・
-            カテゴリ・サブスク・趣味代まで一画面で分析できる SPA です。
+            コミット済みの CSV を横断集計し、月ごとの支出傾向やカテゴリ内訳をすばやく確認できる
+            家計分析 SPA です。
           </p>
         </div>
         <nav className="top-nav" aria-label="主要ナビゲーション">
