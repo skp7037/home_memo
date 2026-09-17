@@ -37,15 +37,23 @@ jobs:
         run: npm run build
 
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v5
+        continue-on-error: true
         with:
           enablement: true
 
       - name: Upload artifact
+        if: steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
       - name: Deploy to GitHub Pages
+        if: steps.pages.outcome == 'success'
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Skip deploy when Pages is unavailable
+        if: steps.pages.outcome != 'success'
+        run: echo "::warning::GitHub Pages is not enabled/configured for this repository. Build succeeded, deployment skipped."
