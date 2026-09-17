@@ -1,0 +1,6 @@
+date,category,detail,costType,amount,subscription,hobby
+2026-02-01,住居,家賃,fixed,92000,false,false
+2026-02-05,通信,スマホ,fixed,7800,true,false
+2026-02-12,食費,スーパー,variable,17100,false,false
+2026-02-16,趣味,ライブ配信,variable,1500,true,true
+2026-02-22,医療,定期通院,variable,4200,false,false

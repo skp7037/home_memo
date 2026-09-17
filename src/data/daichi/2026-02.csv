@@ -1,0 +1,6 @@
+date,category,detail,costType,amount,subscription,hobby
+2026-02-02,光熱費,電気・ガス,fixed,15800,false,false
+2026-02-08,保険,生命保険,fixed,12800,false,false
+2026-02-11,交通,定期券,fixed,9800,false,false
+2026-02-20,趣味,ボードゲーム,variable,4500,false,true
+2026-02-26,サブスク,動画配信,variable,1200,true,false
