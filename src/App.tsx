@@ -9,8 +9,10 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Doughnut, Bar } from 'react-chartjs-2'
+import { useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { paymentRecords } from './dataLoader'
+import { sheetValuesToPaymentRecords } from './sheetsLoader'
 import type { PaymentRecord, SummaryRow } from './types'
 import './index.css'
 
@@ -27,54 +29,9 @@ const monthFormatter = new Intl.DateTimeFormat('ja-JP', {
   month: 'short',
 })
 
-const sortedPayments = [...paymentRecords].sort((left, right) =>
-  left.date < right.date ? 1 : left.date > right.date ? -1 : right.payer.localeCompare(left.payer),
-)
-
-const summaryTotals = summarizeTotals(sortedPayments)
-const fixedSummary = summarizeByLabel(
-  sortedPayments.filter((record) => record.costType === 'fixed'),
-  (record) => record.category,
-)
-const variableSummary = summarizeByLabel(
-  sortedPayments.filter((record) => record.costType === 'variable'),
-  (record) => record.category,
-)
-const payerSummary = summarizeByLabel(sortedPayments, (record) => record.payer)
-const categorySummary = summarizeByLabel(sortedPayments, (record) => record.category)
-const subscriptionSummary = summarizeByLabel(
-  sortedPayments.filter((record) => record.subscription),
-  (record) => record.detail,
-)
-const hobbySummary = summarizeByLabel(
-  sortedPayments.filter((record) => record.hobby),
-  (record) => record.detail,
-)
-const monthlySummary = summarizeByLabel(sortedPayments, (record) => record.month)
-
-const monthlyChartData = {
-  labels: monthlySummary.map((row) => formatMonth(row.label)),
-  datasets: [
-    {
-      label: '月別支出',
-      data: monthlySummary.map((row) => row.total),
-      backgroundColor: '#6d5efc',
-      borderRadius: 10,
-    },
-  ],
-}
-
-const categoryChartData = {
-  labels: categorySummary.map((row) => row.label),
-  datasets: [
-    {
-      label: 'カテゴリ別支出',
-      data: categorySummary.map((row) => row.total),
-    },
-  ],
-}
-
 function App() {
+  const productionUrl = import.meta.env.VITE_PRODUCTION_URL?.trim() || '#/production'
+
   return (
     <div className="app-shell">
       <header className="hero">
@@ -82,8 +39,7 @@ function App() {
           <p className="eyebrow">家計の見える化</p>
           <h1>home_memo</h1>
           <p className="hero-copy">
-            プロジェクトにコミットされた CSV を支払い者・月をまたいで統合し、固定費・変動費・
-            カテゴリ・サブスク・趣味代まで一画面で分析できる SPA です。
+            CSV デモと、Google スプレッドシートから読み込む本番データを、同じ分析画面で確認できます。
           </p>
         </div>
         <nav className="top-nav" aria-label="主要ナビゲーション">
@@ -91,6 +47,7 @@ function App() {
             ダッシュボード
           </NavLink>
           <NavLink to="/list">支払いリスト</NavLink>
+          <a href={productionUrl}>本番ページ</a>
         </nav>
       </header>
 
@@ -99,51 +56,37 @@ function App() {
           <Route
             path="/"
             element={
-              <DashboardPage
-                fixedSummary={fixedSummary}
-                variableSummary={variableSummary}
-                payerSummary={payerSummary}
-                categorySummary={categorySummary}
-                subscriptionSummary={subscriptionSummary}
-                hobbySummary={hobbySummary}
-              />
+              <DashboardPage records={paymentRecords} sourceDescription="コミット済み CSV" />
             }
           />
-          <Route path="/list" element={<ListPage records={sortedPayments} />} />
-          <Route
-            path="*"
-            element={
-              <DashboardPage
-                fixedSummary={fixedSummary}
-                variableSummary={variableSummary}
-                payerSummary={payerSummary}
-                categorySummary={categorySummary}
-                subscriptionSummary={subscriptionSummary}
-                hobbySummary={hobbySummary}
-              />
-            }
-          />
+          <Route path="/list" element={<ListPage records={sortPayments(paymentRecords)} />} />
+          <Route path="/production" element={<ProductionPage />} />
+          <Route path="*" element={<DashboardPage records={paymentRecords} sourceDescription="コミット済み CSV" />} />
         </Routes>
       </main>
     </div>
   )
 }
 
-function DashboardPage({
-  fixedSummary,
-  variableSummary,
-  payerSummary,
-  categorySummary,
-  subscriptionSummary,
-  hobbySummary,
-}: {
-  fixedSummary: SummaryRow[]
-  variableSummary: SummaryRow[]
-  payerSummary: SummaryRow[]
-  categorySummary: SummaryRow[]
-  subscriptionSummary: SummaryRow[]
-  hobbySummary: SummaryRow[]
-}) {
+function DashboardPage({ records, sourceDescription }: { records: PaymentRecord[]; sourceDescription: string }) {
+  const sortedPayments = sortPayments(records)
+  const summaryTotals = summarizeTotals(sortedPayments)
+  const fixedSummary = summarizeByLabel(sortedPayments.filter((record) => record.costType === 'fixed'), (record) => record.category)
+  const variableSummary = summarizeByLabel(sortedPayments.filter((record) => record.costType === 'variable'), (record) => record.category)
+  const payerSummary = summarizeByLabel(sortedPayments, (record) => record.payer)
+  const categorySummary = summarizeByLabel(sortedPayments, (record) => record.category)
+  const subscriptionSummary = summarizeByLabel(sortedPayments.filter((record) => record.subscription), (record) => record.detail)
+  const hobbySummary = summarizeByLabel(sortedPayments.filter((record) => record.hobby), (record) => record.detail)
+  const monthlySummary = summarizeByLabel(sortedPayments, (record) => record.month)
+  const monthlyChartData = {
+    labels: monthlySummary.map((row) => formatMonth(row.label)),
+    datasets: [{ label: '月別支出', data: monthlySummary.map((row) => row.total), backgroundColor: '#6d5efc', borderRadius: 10 }],
+  }
+  const categoryChartData = {
+    labels: categorySummary.map((row) => row.label),
+    datasets: [{ label: 'カテゴリ別支出', data: categorySummary.map((row) => row.total) }],
+  }
+
   return (
     <div className="content-grid">
       <section className="panel stats-grid">
@@ -160,11 +103,11 @@ function DashboardPage({
         <div>
           <h2>データ概要</h2>
           <p>
-            {summaryTotals.fileCount} ファイル / {summaryTotals.payerCount} 人 /{' '}
+            {sourceDescription} / {summaryTotals.payerCount} 人 /{' '}
             {summaryTotals.monthCount} か月 / {summaryTotals.recordCount} 件を集計しています。
           </p>
         </div>
-        <div className="chips" aria-label="読み込み済み CSV">
+        <div className="chips" aria-label="読み込み済みデータ">
           {summaryTotals.sources.map((source) => (
             <span className="chip" key={source}>
               {source}
@@ -176,7 +119,7 @@ function DashboardPage({
       <section className="panel chart-panel">
         <div className="section-heading">
           <h2>月別の支出推移</h2>
-          <p>すべての CSV を統合した月次合計</p>
+          <p>読み込み済みデータの月次合計</p>
         </div>
         <div className="chart-wrap">
           <Bar
@@ -246,7 +189,7 @@ function ListPage({ records }: { records: PaymentRecord[] }) {
     <section className="panel">
       <div className="section-heading">
         <h2>支払いリスト</h2>
-        <p>すべての CSV を統合した明細一覧</p>
+        <p>読み込み済みデータの明細一覧</p>
       </div>
       <div className="table-wrap">
         <table>
@@ -287,6 +230,114 @@ function ListPage({ records }: { records: PaymentRecord[] }) {
       </div>
     </section>
   )
+}
+
+function ProductionPage() {
+  const [records, setRecords] = useState<PaymentRecord[]>([])
+  const [status, setStatus] = useState<'idle' | 'loading' | 'empty' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  const signIn = async () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim()
+    const spreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID?.trim()
+    const range = import.meta.env.VITE_GOOGLE_SHEET_RANGE?.trim() || '支払い!A:G'
+
+    if (!clientId || !spreadsheetId) {
+      setStatus('error')
+      setMessage('Google の環境変数が設定されていません。')
+      return
+    }
+
+    setStatus('loading')
+    setMessage('')
+    try {
+      const token = await requestAccessToken(clientId)
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`,
+        { headers: { Authorization: 'Bearer ' + token } },
+      )
+      if (!response.ok) {
+        throw new Error('Google Sheets API からデータを取得できませんでした。')
+      }
+      const payload = (await response.json()) as { values?: string[][] }
+      const loadedRecords = sheetValuesToPaymentRecords(payload.values ?? [])
+      setRecords(loadedRecords)
+      setStatus(loadedRecords.length > 0 ? 'idle' : 'empty')
+    } catch (error) {
+      setRecords([])
+      setStatus('error')
+      setMessage(error instanceof Error ? error.message : '認証またはデータ取得に失敗しました。')
+    }
+  }
+
+  const signOut = () => {
+    setRecords([])
+    setStatus('idle')
+    setMessage('')
+  }
+
+  if (records.length > 0) {
+    return (
+      <>
+        <section className="panel production-actions">
+          <p>Google スプレッドシートから読み込んだ非公開データです。</p>
+          <button type="button" onClick={signOut}>ログアウトしてデータを消去</button>
+        </section>
+        <DashboardPage records={records} sourceDescription="Google Sheets" />
+      </>
+    )
+  }
+
+  return (
+    <section className="panel production-state">
+      <h2>本番ページ</h2>
+      <p>Google にログインして、共有を許可されたスプレッドシートを読み込みます。</p>
+      {status === 'error' ? <p className="error-message">{message}</p> : null}
+      {status === 'loading' ? <p>Google Sheets を読み込んでいます…</p> : null}
+      {status === 'empty' ? <p>読み込める支払いデータがありません。</p> : null}
+      <button type="button" onClick={() => void signIn()} disabled={status === 'loading'}>
+        Google でログイン
+      </button>
+      {status === 'idle' && !message ? <p>未ログインです。</p> : null}
+    </section>
+  )
+}
+
+function requestAccessToken(clientId: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = () => {
+      const google = (window as Window & { google?: GoogleIdentity }).google
+      if (!google) {
+        reject(new Error('Google Identity Services を読み込めませんでした。'))
+        return
+      }
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+        callback: (response) => response.access_token ? resolve(response.access_token) : reject(new Error('Google ログインに失敗しました。')),
+        error_callback: () => reject(new Error('Google ログインに失敗しました。')),
+      })
+      client.requestAccessToken({ prompt: '' })
+    }
+    script.onerror = () => reject(new Error('Google Identity Services を読み込めませんでした。'))
+    document.head.append(script)
+  })
+}
+
+type GoogleIdentity = {
+  accounts: {
+    oauth2: {
+      initTokenClient: (config: {
+        client_id: string
+        scope: string
+        callback: (response: { access_token?: string }) => void
+        error_callback: () => void
+      }) => { requestAccessToken: (config: { prompt: string }) => void }
+    }
+  }
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -382,6 +433,12 @@ function summarizeByLabel(
 
 function sumAmounts(records: PaymentRecord[]) {
   return records.reduce((total, record) => total + record.amount, 0)
+}
+
+function sortPayments(records: PaymentRecord[]) {
+  return [...records].sort((left, right) =>
+    left.date < right.date ? 1 : left.date > right.date ? -1 : right.payer.localeCompare(left.payer),
+  )
 }
 
 function formatMonth(value: string) {
